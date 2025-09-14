@@ -27,4 +27,11 @@ public class MemberService {
                 .filter(member -> member.getPassword().equals(password))
                 .orElse(null);
     }
+
+    @Transactional(readOnly = true)
+    public Member findById(Long id) {
+        return memberRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("회원이 없습니다. id=" + id));
+    }
+
 }

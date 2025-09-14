@@ -1,11 +1,11 @@
 <!doctype html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <title>회원가입</title>
-</head>
+<head><meta charset="UTF-8"><title>회원가입</title></head>
 <body>
 <h1>회원가입</h1>
+
+<!-- 에러 메시지 -->
+<div th:if="${errorMessage}" th:text="${errorMessage}" style="color:red;"></div>
 
 <form method="post" action="/signup">
     <label>이메일</label>

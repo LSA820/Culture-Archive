@@ -1,0 +1,19 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>내 홈</title></head>
+<body>
+<h1 th:text="'안녕하세요, ' + ${member.username} + '님!'"></h1>
+
+<!-- 성공 메시지 -->
+<div th:if="${successMessage}" th:text="${successMessage}" style="color:green;"></div>
+
+<h2>구독한 아티스트의 전시 일정</h2>
+<ul>
+  <!-- 나중에 실제 데이터로 교체 -->
+  <li>2025-10-01 : </li>
+  <li>2025-11-15 : </li>
+</ul>
+
+<p><a th:href="@{/}">메인 홈으로</a></p>
+</body>
+</html>

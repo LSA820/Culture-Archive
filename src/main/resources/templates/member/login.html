@@ -1,23 +1,24 @@
 <!doctype html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <title>로그인</title>
-</head>
+<head><meta charset="UTF-8"><title>로그인</title></head>
 <body>
 <h1>로그인</h1>
 
+<!-- 회원가입 성공 후 메시지 -->
+<div th:if="${successMessage}" th:text="${successMessage}" style="color:green;"></div>
+<!-- 로그인 실패 시 메시지 -->
+<div th:if="${errorMessage}" th:text="${errorMessage}" style="color:red;"></div>
+
 <form method="post" action="/login">
-    <label>아이디</label>
-    <input type="text" name="email"> <!-- email 또는 userid -->
-    <br>
+    <label>이메일</label>
+    <input type="text" name="email"><br>
+
     <label>비밀번호</label>
-    <input type="password" name="password">
-    <br>
+    <input type="password" name="password"><br>
+
     <button type="submit">로그인</button>
 </form>
 
 <p><a th:href="@{/}">← 홈으로</a></p>
-
 </body>
 </html>
