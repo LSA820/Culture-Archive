@@ -1,8 +1,9 @@
 package com.example.culture_diary.web;
 
+import com.example.culture_diary.domain.Member;
+import com.example.culture_diary.domain.MemberRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 
@@ -10,16 +11,15 @@ import org.springframework.web.bind.annotation.PostMapping;
 @Controller
 public class HomeController {
 
-    @GetMapping("/")
-    public String home() {
-        return "home"; // templates/home.html
+    private final MemberRepository memberRepository;
+
+    public HomeController(MemberRepository memberRepository) {
+        this.memberRepository = memberRepository;
     }
 
-    @PostMapping("/signup")
-    public String signup(SignupRequest form) {
-        log.info("회원가입 요청: username={}, password={}",
-                form.getUsername(), form.getPassword());
+    @GetMapping("/")
+    public String home() {
+        log.info("홈 화면 요청"); // 로그 출력
         return "home";
     }
 }
-
