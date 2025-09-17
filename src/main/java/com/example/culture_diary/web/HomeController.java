@@ -5,7 +5,6 @@ import com.example.culture_diary.domain.MemberRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 
 @Slf4j
 @Controller
@@ -19,7 +18,7 @@ public class HomeController {
 
     @GetMapping("/")
     public String home() {
-        log.info("홈 화면 요청"); // 로그 출력
+        log.info("홈 화면 요청");
         return "home";
     }
 }
