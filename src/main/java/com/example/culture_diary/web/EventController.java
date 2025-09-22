@@ -27,10 +27,8 @@ public class EventController {
                          @RequestParam(required = false) Integer numOfRows,
                          Model model) {
 
-        List<KcisaXml.Event> events = List.of(); // 기본값
-        log.info("KCISA results = {}", events == null ? 0 : events.size());
-        model.addAttribute("events", events);
-        // dtype, title 둘 다 채워졌을 때만 API 호출
+        List<KcisaXml.Event> events = List.of();
+
         if (dtype != null && !dtype.isBlank()
                 && title != null && title.strip().length() >= 2) {
             events = cultureService.searchEvents(dtype, title, pageNo, numOfRows);
@@ -40,6 +38,7 @@ public class EventController {
         model.addAttribute("title", title);
         model.addAttribute("events", events);
 
-        return "event/search"; // templates/event/search.html
+        log.info("KCISA results = {}", events.size());
+        return "event/search";
     }
 }
