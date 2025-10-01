@@ -1,11 +1,10 @@
-package com.example.culture_diary.web;
+package com.example.culture_archive.web.dto;
 
 import lombok.Getter;
 import lombok.Setter;
 
 import java.util.List;
 
-// web/EventResponse.java
 @Getter @Setter
 public class EventResponse {
     private Header header;

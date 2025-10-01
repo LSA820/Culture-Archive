@@ -1,13 +1,13 @@
-package com.example.culture_diary.domain;
+package com.example.culture_archive.domain.member;
 
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
+// 회원 저장 DB Entity
 @Entity
 @Getter @NoArgsConstructor
-@Table(name = "member", uniqueConstraints = @UniqueConstraint(name="uk_member_email", columnNames="email"))
+@Table(name = "arc_member", uniqueConstraints = @UniqueConstraint(name="uk_member_email", columnNames="email"))
 public class Member {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)

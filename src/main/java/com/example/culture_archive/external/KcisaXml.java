@@ -1,4 +1,4 @@
-package com.example.culture_diary.web;
+package com.example.culture_archive.external;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.dataformat.xml.annotation.*;

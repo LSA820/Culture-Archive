@@ -1,4 +1,4 @@
-package com.example.culture_diary.web;
+package com.example.culture_archive.web.dto;
 
 import lombok.Getter;
 import lombok.Setter;

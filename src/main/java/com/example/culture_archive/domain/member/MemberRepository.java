@@ -1,4 +1,4 @@
-package com.example.culture_diary.domain;
+package com.example.culture_archive.domain.member;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 

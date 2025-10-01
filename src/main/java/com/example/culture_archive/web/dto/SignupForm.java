@@ -1,4 +1,4 @@
-package com.example.culture_diary.web;
+package com.example.culture_archive.web.dto;
 
 import jakarta.validation.constraints.Size;
 import lombok.Getter;

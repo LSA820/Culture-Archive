@@ -1,4 +1,4 @@
-package com.example.culture_diary;
+package com.example.culture_archive;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

@@ -29,22 +29,34 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	implementation 'org.springframework.boot:spring-boot-starter-cache'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-
 	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation "org.springframework.boot:spring-boot-starter-webflux"
+	implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-xml"
+	implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-xml"
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
 	compileOnly 'org.projectlombok:lombok'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
 	annotationProcessor 'org.projectlombok:lombok'
 	providedRuntime 'org.springframework.boot:spring-boot-starter-tomcat'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
-	implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-xml"
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-	implementation "org.springframework.boot:spring-boot-starter-webflux"
-	implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-xml"
+
 }
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+tasks.withType(JavaCompile).configureEach {
+	options.encoding = 'UTF-8'
+}
+tasks.withType(ProcessResources).configureEach {
+	filteringCharset = 'UTF-8'
+}
+bootRun {
+	jvmArgs = ['-Dfile.encoding=UTF-8']
 }

@@ -1,7 +1,7 @@
-package com.example.culture_diary.web;
+package com.example.culture_archive.web.controller;
 
-import com.example.culture_diary.domain.Member;
-import com.example.culture_diary.service.MemberService;
+import com.example.culture_archive.domain.member.Member;
+import com.example.culture_archive.service.MemberService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
