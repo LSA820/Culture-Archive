@@ -3,9 +3,13 @@
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
       lang="ko">
 <head>
-    <meta charset="UTF-8" />
+    <meta charset="UTF-8"/>
     <title>Culture Archive</title>
-    <link rel="stylesheet" th:href="@{/css/bootstrap.min.css}" />
+    <link rel="stylesheet" th:href="@{/css/bootstrap.min.css}"/>
+
+    <!-- HTMX: 전시일정 부분만 AJAX로 갈아끼우기 위해 사용 -->
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+
     <style>
         :root{
           --ca-blue-50:#f0f6ff; --ca-blue-100:#e4f0ff; --ca-blue-400:#72a7ff;
@@ -16,9 +20,9 @@
         .btn-ca{background:var(--ca-blue-500); border-color:var(--ca-blue-500); color:#fff;}
         .btn-ca:hover{background:var(--ca-blue-600); border-color:var(--ca-blue-600);}
         .hero-card{border-radius:var(--card-r); background:#fff; box-shadow:0 12px 40px rgba(0,0,0,.06); padding:3rem 2rem; margin-top:2rem; text-align:center;}
-        .poster-wrap{width:120px; aspect-ratio:2/3; overflow:hidden; border-radius:var(--card-r); background:#f8f9fa; flex:0 0 auto; display:flex; align-items:center; justify-content:center;}
+        .poster-wrap{width:120px; height:180px; overflow:hidden; border-radius:var(--card-r); background:#f8f9fa; flex:0 0 auto; display:flex; align-items:center; justify-content:center;}
         .poster-img{width:100%; height:100%; object-fit:cover;}
-        .event-card{border:0; border-radius:var(--card-r); box-shadow:0 8px 24px rgba(0,0,0,.05); transition:transform .2s;}
+        .event-card{border:0; border-radius:var(--card-r); box-shadow:0 8px 24px rgba(0,0,0,.05); transition:transform .2s; min-height:200px;}
         .event-card:hover{transform:translateY(-4px);}
         .chip{display:flex; align-items:center; gap:.5rem; background:#fff; border-radius:999px; padding:.5rem 1rem; box-shadow:0 2px 8px rgba(0,0,0,.06); font-size:.9rem;}
         .chip .avatar{width:26px; height:26px; border-radius:50%; background:var(--ca-blue-100); display:flex; align-items:center; justify-content:center; color:var(--ca-muted);}
@@ -32,8 +36,21 @@
             <ul class="navbar-nav">
                 <li class="nav-item"><a class="nav-link" th:href="@{/events/search}">전시/공연</a></li>
                 <li class="nav-item"><a class="nav-link" th:href="@{/reviews}">커뮤니티</a></li>
-                <li class="nav-item" sec:authorize="isAnonymous()"><a class="nav-link" th:href="@{/login}">로그인</a></li>
-                <li class="nav-item" sec:authorize="isAnonymous()"><a class="nav-link" th:href="@{/signup}">회원가입</a></li>
+
+                <!-- 비로그인 시 노출 -->
+                <li class="nav-item" sec:authorize="isAnonymous()">
+                    <a class="nav-link" th:href="@{/login}">로그인</a>
+                </li>
+                <li class="nav-item" sec:authorize="isAnonymous()">
+                    <a class="nav-link" th:href="@{/signup}">회원가입</a>
+                </li>
+
+                <!-- 로그인 시 노출: 로그아웃 폼(POST) -->
+                <li class="nav-item" sec:authorize="isAuthenticated()">
+                    <form th:action="@{/logout}" method="post">
+                        <button type="submit" class="btn btn-link nav-link">로그아웃</button>
+                    </form>
+                </li>
             </ul>
         </div>
     </div>
@@ -45,7 +62,7 @@
         <h1 class="fw-bold mb-3" style="color:var(--ca-ink)">나의 문화생활 아카이브</h1>
         <p class="text-secondary mb-4">포스터·티켓으로 자동 기록하고, 후기를 공유하세요.</p>
         <form class="input-group input-group-lg" th:action="@{/events/search}" method="get">
-            <input type="text" class="form-control" name="title" placeholder="전시·공연 검색 (제목, 장소 등)" />
+            <input type="text" class="form-control" name="title" placeholder="전시·공연 검색 (제목, 장소 등)"/>
             <button class="btn btn-ca" type="submit">검색</button>
         </form>
     </div>
@@ -53,91 +70,98 @@
     <!-- 본문 -->
     <section class="py-5">
         <div class="row g-4">
-            <!-- 좌: 일정 -->
-            <div class="col-lg-8">
-                <div class="d-flex align-items-center justify-content-between mb-3">
-                    <h5 class="fw-semibold">다가오는 일정</h5>
+            <section class="py-5">
+                <div class="row g-4">
+                    <!-- 좌: 일정 -->
+                    <div class="col-lg-8">
+                        <div id="eventsBox" th:fragment="eventsBox">
+                            <div class="d-flex align-items-center justify-content-between mb-3">
+                                <h5 class="fw-semibold">
+                                    다가오는 일정
+                                    <span class="htmx-indicator spinner-border spinner-border-sm ms-2"
+                                          role="status"></span>
+                                </h5>
+                                <!-- 컨트롤 폼 -->
+                                <form class="d-flex gap-2"
+                                      hx-get="/events/box"
+                                      hx-target="#eventsBox"
+                                      hx-swap="outerHTML"
+                                      hx-push-url="false">
+                                    <select class="form-select form-select-sm" name="sort" th:value="${sort}"
+                                            hx-trigger="change">
+                                        <option value="date">날짜순</option>
+                                        <option value="views">조회수순</option>
+                                    </select>
+                                    <input type="hidden" name="dir" th:value="${dir}"/>
+                                    <input type="hidden" name="size" th:value="${size}"/>
+                                    <input type="hidden" name="page" th:value="${page}"/>
 
-                    <!-- 정렬/페이지 폼: sort, dir, size 상태 유지 -->
-                    <form th:action="@{/}" method="get" class="d-flex gap-2">
-                        <select class="form-select form-select-sm" name="sort">
-                            <option value="date"   th:selected="${sort=='date'}">날짜순</option>
-                            <option value="views"  th:selected="${sort=='views'}">조회수순</option>
-                            <option value="latest" th:selected="${sort=='latest'}">최신등록순</option>
-                        </select>
-                        <input type="hidden" name="dir"  th:value="${dir}" />
-                        <input type="hidden" name="size" th:value="${size}" />
-                        <div class="btn-group btn-group-sm">
-                            <!-- 첫 페이지면 비활성화 -->
-                            <button class="btn btn-outline-secondary" name="page" th:value="${page-1}" th:disabled="${isFirst}">▲</button>
-                            <!-- 마지막 페이지면 비활성화 -->
-                            <button class="btn btn-outline-secondary" name="page" th:value="${page+1}" th:disabled="${isLast}">▼</button>
-                        </div>
-                    </form>
-                </div>
+                                    <div class="btn-group btn-group-sm">
+                                        <!-- 화살표 버튼 -->
+                                        <button type="button" class="btn btn-outline-secondary"
+                                                hx-get="@{/events/box(sort=${sort},dir=${dir},size=${size},page=${page-1})}"
+                                                hx-target="#eventsBox" hx-swap="outerHTML" hx-push-url="false"
+                                                th:disabled="${isFirst}">▲</button>
 
-                <!-- 앞 4개만 노출: events가 4초과면 subList(0,4) -->
-                <div class="row g-4"
-                     th:with="first4=${events != null and events.size() > 4 ? events.subList(0,4) : events}">
-                    <div class="col-md-6" th:each="e : ${first4}">
-                        <div class="card event-card h-100 d-flex flex-row p-3">
-                            <div class="poster-wrap">
-                                <!-- 이미지: imageObject만 사용 -->
-                                <img class="poster-img"
-                                     th:src="${e.imageObject}"
-                                     th:alt="${e.title}">
+                                        <button type="button" class="btn btn-outline-secondary"
+                                                hx-get="@{/events/box(sort=${sort},dir=${dir},size=${size},page=${page+1})}"
+                                                hx-target="#eventsBox" hx-swap="outerHTML" hx-push-url="false"
+                                                th:disabled="${isLast}">▼</button>
+                                    </div>
+                                </form>
                             </div>
 
-                            <div class="d-flex flex-column justify-content-between flex-grow-1 ps-3">
-                                <div>
-                                    <h6 class="fw-semibold" th:text="${e.title}">전시·공연 제목</h6>
-                                    <div class="text-secondary small" th:text="${e.eventSite}">장소</div>
-                                    <!-- 기간: period 우선, 없으면 eventPeriod -->
-                                    <div class="text-secondary small"
-                                         th:text="${e.period != null ? e.period : e.eventPeriod}">
-                                        2025.01.01 ~ 01.31
+                            <div class="row g-4">
+                                <div class="col-md-6" th:each="e : ${events}">
+                                    <!-- 카드 -->
+                                    <div class="card event-card h-100 d-flex flex-row p-3">
+                                        <div class="poster-wrap">
+                                            <img class="poster-img" th:src="${e.imageObject}" th:alt="${e.title}">
+                                        </div>
+                                        <div class="d-flex flex-column justify-content-between flex-grow-1 ps-3">
+                                            <div>
+                                                <h6 class="fw-semibold" th:text="${e.title}">제목</h6>
+                                                <div class="text-secondary small" th:text="${e.eventSite}">장소</div>
+                                                <div class="text-secondary small"
+                                                     th:text="${e.period != null ? e.period : e.eventPeriod}">기간
+                                                </div>
+                                            </div>
+                                            <a class="btn btn-sm btn-ca mt-2" th:href="${e.url}"
+                                               target="_blank">상세보기</a>
+                                        </div>
                                     </div>
                                 </div>
-                                <!-- 상세 링크: url 사용 -->
-                                <a class="btn btn-sm btn-ca mt-2"
-                                   th:href="${e.url}"
-                                   target="_blank" rel="noopener">상세보기</a>
+
+                                <div class="col-12" th:if="${events == null or #lists.isEmpty(events)}">
+                                    <div class="alert alert-light border">표시할 일정이 없습니다. 상단 검색에서 찾아보세요.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 우: 후기 (고정) -->
+                    <div class="col-lg-4">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <h5 class="fw-semibold">커뮤니티 관람후기</h5>
+                            <a class="btn btn-sm btn-outline-secondary" th:href="@{/reviews}">더보기</a>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <div class="chip" th:each="r : ${reviews}">
+                                <span class="avatar" th:text="${#strings.substring(r.authorName,0,1)}">U</span>
+                                <strong th:text="${r.title}">제목</strong>
+                                <span class="text-secondary">·</span>
+                                <span class="text-secondary"
+                                      th:text="${#temporals.format(r.createdAt,'yyyy.MM.dd')}">날짜</span>
+                            </div>
+                            <div class="chip" th:if="${reviews == null or #lists.isEmpty(reviews)}">
+                                <span class="avatar">U</span>
+                                아직 후기가 없습니다. <a class="ms-1" th:href="@{/reviews/new}">첫 후기를 남겨보세요.</a>
                             </div>
                         </div>
                     </div>
                 </div>
-
-
-                <!-- 빈 목록 메시지 -->
-                    <div class="col-12" th:if="${events == null or #lists.isEmpty(events)}">
-                        <div class="alert alert-light border">표시할 일정이 없습니다. 상단 검색에서 찾아보세요.</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 우: 후기 -->
-            <div class="col-lg-4">
-                <div class="d-flex align-items-center justify-content-between mb-3">
-                    <h5 class="fw-semibold">커뮤니티 관람후기</h5>
-                    <a class="btn btn-sm btn-outline-secondary" th:href="@{/reviews}">더보기</a>
-                </div>
-                <div class="d-grid gap-2">
-                    <div class="chip" th:each="r : ${reviews}">
-                        <span class="avatar" th:text="${#strings.substring(r.authorName,0,1)}">U</span>
-                        <strong th:text="${r.title}">전시 후기</strong>
-                        <span class="text-secondary">·</span>
-                        <span class="text-secondary" th:text="${#temporals.format(r.createdAt,'yyyy.MM.dd')}">2024.01.01</span>
-                    </div>
-                    <div class="chip" th:if="${reviews == null or #lists.isEmpty(reviews)}">
-                        <span class="avatar">U</span>
-                        아직 후기가 없습니다. <a class="ms-1" th:href="@{/reviews/new}">첫 후기를 남겨보세요.</a>
-                    </div>
-                </div>
-            </div>
+            </section>
         </div>
-    </section>
-</div>
-
-<script th:src="@{/js/bootstrap.bundle.min.js}"></script>
+        <script th:src="@{/js/bootstrap.bundle.min.js}"></script>
 </body>
 </html>

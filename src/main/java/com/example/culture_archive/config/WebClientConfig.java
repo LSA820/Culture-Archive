@@ -28,8 +28,9 @@ public class WebClientConfig {
 
         return builder
                 .baseUrl("https://api.kcisa.kr/openapi/CNV_060")
-                .defaultHeader(HttpHeaders.USER_AGENT, "Mozilla/5.0 (CultureArchive)")
-                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_XML_VALUE)
+                .defaultHeader(org.springframework.http.HttpHeaders.USER_AGENT, "Mozilla/5.0 (CultureArchive)")
+                .defaultHeader(org.springframework.http.HttpHeaders.ACCEPT, org.springframework.http.MediaType.APPLICATION_XML_VALUE)
+                .defaultHeader(org.springframework.http.HttpHeaders.ACCEPT_ENCODING, "gzip")
                 .clientConnector(new ReactorClientHttpConnector(http))
                 .build();
     }

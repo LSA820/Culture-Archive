@@ -4,18 +4,17 @@ import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
-import org.springframework.web.util.UriBuilder;
 
 import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Function;
 
 @Slf4j
 @Service
@@ -28,48 +27,44 @@ public class KcisaClient {
     @Value("${kcisa.api.key}")
     private String apiKey;
 
-    public List<KcisaXml.Event> searchEvents(String dtype, String title,
+    @Cacheable(
+            cacheNames = "kcisa",
+            key = "T(java.util.Objects).hash(#dtype,#searchWord,#pageNo,#numOfRows)",
+            unless = "#result == null || #result.isEmpty()"
+    )
+    public List<KcisaXml.Event> searchEvents(String dtype, String searchWord,
                                              Integer pageNo, Integer numOfRows) {
-
-        // 1) 전달 문자열의 코드포인트 로그
-        log.info("KCISA cps dtype={}, title={}",
-                toCps(dtype), toCps(title)); // 예: U+C804,U+C2DC
-
-        // 2) URI를 실제로 찍기 위해 build 결과를 보관
         final String[] builtUrl = new String[1];
-        Function<UriBuilder, URI> uriFn = uri -> {
-            URI u = uri.path("/request")
-                    .queryParam("serviceKey", apiKey == null ? "" : apiKey.trim())
-                    .queryParam("dtype", dtype)
-                    .queryParam("title", title)
-                    .queryParam("pageNo", Optional.ofNullable(pageNo).orElse(1))
-                    .queryParam("numOfRows", Optional.ofNullable(numOfRows).orElse(10))
-                    .build();
-            builtUrl[0] = u.toString();     // 퍼센트 인코딩 형태 확인용
-            return u;
-        };
-
-        log.info("[KCISA CALL] URI={}", (Object) builtUrl[0]); // 첫 호출 전 null일 수 있음
 
         try {
             String xmlString = webClient.get()
-                    .uri(uriFn)
+                    .uri(uri -> {
+                        var ub = uri.path("/request")
+                                .queryParam("serviceKey", apiKey == null ? "" : apiKey.trim())
+                                .queryParam("dtype", dtype)
+                                .queryParam("pageNo", Optional.ofNullable(pageNo).orElse(1))
+                                .queryParam("numOfRows", Optional.ofNullable(numOfRows).orElse(30));
+
+                        // 검색어 있으면 파라미터 추가
+                        if (searchWord != null && !searchWord.isBlank()) {
+                            ub = ub.queryParam("title", searchWord); // KCISA는 보통 title/searchWrd 중 하나
+                        }
+
+                        URI u = ub.build();
+                        builtUrl[0] = u.toString(); // 최종 URI 저장
+                        return u;
+                    })
                     .accept(MediaType.APPLICATION_XML)
                     .retrieve()
                     .toEntity(String.class)
-                    .timeout(Duration.ofSeconds(20))
-                    .blockOptional()
-                    .map(resp -> {
-                        log.info("[KCISA CALL] finalURI={}", builtUrl[0]); // 여기에서 찍어야 값 있음
-                        log.info("[KCISA HTTP] status={} len={}",
-                                resp.getStatusCode(), resp.getBody() == null ? 0 : resp.getBody().length());
-                        return resp.getBody();
-                    })
-                    .orElse("");
+                    .timeout(Duration.ofSeconds(12))
+                    .block()
+                    .getBody();
 
-            log.info("[KCISA CALL] finalURI={}", builtUrl[0]); // 실제 최종 URI
-            if (xmlString.isBlank()) {
-                log.warn("[KCISA] blank body (timeout or upstream issue)");
+            log.info("[KCISA CALL] finalURI={}", builtUrl[0]);
+
+            if (xmlString == null || xmlString.isBlank()) {
+                log.warn("[KCISA] blank body");
                 return List.of();
             }
 
@@ -82,7 +77,6 @@ public class KcisaClient {
                 log.warn("[KCISA PARSE] no items");
                 return List.of();
             }
-
             List<KcisaXml.Event> items = xml.getBody().getItems().getItem();
             log.info("[KCISA PARSE] items={}", items.size());
             return items;
