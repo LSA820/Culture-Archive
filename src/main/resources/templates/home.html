@@ -78,42 +78,46 @@
                             <div class="d-flex align-items-center justify-content-between mb-3">
                                 <h5 class="fw-semibold">
                                     다가오는 일정
-                                    <span class="htmx-indicator spinner-border spinner-border-sm ms-2"
-                                          role="status"></span>
+                                    <span class="htmx-indicator spinner-border spinner-border-sm ms-2" role="status"></span>
                                 </h5>
-                                <!-- 컨트롤 폼 -->
+
+                                <!--  컨트롤 폼: /events/box 로 부분 렌더링, URL 안 바꿈 -->
                                 <form class="d-flex gap-2"
-                                      hx-get="/events/box"
+                                      hx-get="@{/events/box}"
                                       hx-target="#eventsBox"
                                       hx-swap="outerHTML"
+                                      hx-select="#eventsBox"
                                       hx-push-url="false">
-                                    <select class="form-select form-select-sm" name="sort" th:value="${sort}"
-                                            hx-trigger="change">
+
+                                    <select class="form-select form-select-sm" name="sort" th:value="${sort}" hx-trigger="change">
                                         <option value="date">날짜순</option>
                                         <option value="views">조회수순</option>
                                     </select>
-                                    <input type="hidden" name="dir" th:value="${dir}"/>
+                                    <input type="hidden" name="dir"  th:value="${dir}"/>
                                     <input type="hidden" name="size" th:value="${size}"/>
                                     <input type="hidden" name="page" th:value="${page}"/>
 
                                     <div class="btn-group btn-group-sm">
-                                        <!-- 화살표 버튼 -->
+                                        <!-- 이전 페이지 -->
                                         <button type="button" class="btn btn-outline-secondary"
                                                 hx-get="@{/events/box(sort=${sort},dir=${dir},size=${size},page=${page-1})}"
-                                                hx-target="#eventsBox" hx-swap="outerHTML" hx-push-url="false"
+                                                hx-target="#eventsBox" hx-swap="outerHTML"
+                                                hx-select="#eventsBox" hx-push-url="false"
                                                 th:disabled="${isFirst}">▲</button>
 
+                                        <!-- 다음 페이지 -->
                                         <button type="button" class="btn btn-outline-secondary"
                                                 hx-get="@{/events/box(sort=${sort},dir=${dir},size=${size},page=${page+1})}"
-                                                hx-target="#eventsBox" hx-swap="outerHTML" hx-push-url="false"
+                                                hx-target="#eventsBox" hx-swap="outerHTML"
+                                                hx-select="#eventsBox" hx-push-url="false"
                                                 th:disabled="${isLast}">▼</button>
                                     </div>
                                 </form>
                             </div>
 
+                            <!-- 카드 목록 -->
                             <div class="row g-4">
                                 <div class="col-md-6" th:each="e : ${events}">
-                                    <!-- 카드 -->
                                     <div class="card event-card h-100 d-flex flex-row p-3">
                                         <div class="poster-wrap">
                                             <img class="poster-img" th:src="${e.imageObject}" th:alt="${e.title}">
@@ -123,15 +127,14 @@
                                                 <h6 class="fw-semibold" th:text="${e.title}">제목</h6>
                                                 <div class="text-secondary small" th:text="${e.eventSite}">장소</div>
                                                 <div class="text-secondary small"
-                                                     th:text="${e.period != null ? e.period : e.eventPeriod}">기간
-                                                </div>
+                                                     th:text="${e.period != null ? e.period : e.eventPeriod}">기간</div>
                                             </div>
-                                            <a class="btn btn-sm btn-ca mt-2" th:href="${e.url}"
-                                               target="_blank">상세보기</a>
+                                            <a class="btn btn-sm btn-ca mt-2" th:href="${e.url}" target="_blank" rel="noopener">상세보기</a>
                                         </div>
                                     </div>
                                 </div>
 
+                                <!-- 빈 목록 메시지 -->
                                 <div class="col-12" th:if="${events == null or #lists.isEmpty(events)}">
                                     <div class="alert alert-light border">표시할 일정이 없습니다. 상단 검색에서 찾아보세요.</div>
                                 </div>

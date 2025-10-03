@@ -95,6 +95,9 @@ public class HomeController {
         var slice = homeService.getHomeUpcoming(sort, dir, Math.max(0,page), size);
         int totalPages = (int) ((slice.total() + size - 1) / size);
 
+        log.info("[eventsBox] sort={},dir={},page={},size={} -> count={}, total={}",
+                sort, dir, page, size, slice.content().size(), slice.total());
+
         model.addAttribute("events", slice.content());
         model.addAttribute("total", slice.total());
         model.addAttribute("page",  slice.page());

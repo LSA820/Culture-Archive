@@ -1,83 +1,105 @@
-    package com.example.culture_archive.service;
+package com.example.culture_archive.service;
 
-    import com.example.culture_archive.external.KcisaClient;
-    import com.example.culture_archive.external.KcisaXml;
-    import com.example.culture_archive.util.PeriodParser;
-    import lombok.RequiredArgsConstructor;
-    import org.springframework.stereotype.Service;
-    import com.example.culture_archive.util.DateRange;
-    import java.util.concurrent.*;
-    import java.time.LocalDate;
-    import java.util.Comparator;
-    import java.util.List;
-    import java.util.stream.Stream;
+import com.example.culture_archive.external.KcisaClient;
+import com.example.culture_archive.external.KcisaXml;
+import com.example.culture_archive.util.DateRange;
+import com.example.culture_archive.util.PeriodParser;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.stereotype.Service;
 
-    @Service
-    @RequiredArgsConstructor
-    public class EventService {
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
-        private final KcisaClient kcisaClient;
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class EventService {
 
-        /**
-         * 다가오는 일정 조회 (전시 + 공연 합쳐서 반환)
-         * @param sort 정렬 기준(date/views)
-         * @param dir  asc/desc
-         * @param page 페이지 번호
-         * @param size 페이지 크기
-         */
-        public Slice<KcisaXml.Event> getUpcoming(String sort, String dir, int page, int size) {
-            LocalDate today = LocalDate.now();
-            LocalDate until = today.plusDays(30);
+    private final KcisaClient kcisaClient;
 
-            // 비동기로 전시/공연 병렬 호출
-            var exF = CompletableFuture.supplyAsync(() -> kcisaClient.searchEvents("전시", null, 1, 30));
-            var pfF = CompletableFuture.supplyAsync(() -> kcisaClient.searchEvents("공연", null, 1, 30));
+    private static final List<String> DTYPE_CANDIDATES =
+            List.of("전시", "공연", "뮤지컬", "국악"); // 이 부분을 수정하신 것으로 보입니다.
 
-            // 타임아웃 + 실패 시 빈 리스트
-            List<KcisaXml.Event> exhibitions = exF.orTimeout(6, TimeUnit.SECONDS)
-                    .exceptionally(e -> List.of())
-                    .join();
-            List<KcisaXml.Event> performances = pfF.orTimeout(6, TimeUnit.SECONDS)
-                    .exceptionally(e -> List.of())
-                    .join();
+    @Cacheable(
+            cacheNames = "homeUpcoming",
+            key = "#sort+'|'+#dir+'|'+#page+'|'+#size",
+            unless = "#result == null || #result.content().isEmpty()"
+    )
+    public Slice<KcisaXml.Event> getUpcoming(String sort, String dir, int page, int size) {
+        LocalDate today = LocalDate.now();
+        LocalDate until = today.plusDays(30);
 
-            // 두 리스트 합치고 기간 필터링
-            List<KcisaXml.Event> upcoming = Stream.concat(exhibitions.stream(), performances.stream())
-                    .filter(e -> {
-                        String p = e.getPeriod() != null ? e.getPeriod() : e.getEventPeriod();
-                        return PeriodParser.parse(p)
-                                .map(r -> !r.end().isBefore(today) && !r.start().isAfter(until))
-                                .orElse(true);
-                    })
-                    .toList();
+        // 병렬 처리 로직을 제거하고, 순차 처리(for 루프)로 변경합니다.
+        List<KcisaXml.Event> bucket = new ArrayList<>();
+        for (String dtype : DTYPE_CANDIDATES) {
+            try {
+                // API 서버에 부담을 주지 않기 위해 각 요청 사이에 0.3초의 지연(delay)을 줍니다.
+                Thread.sleep(300);
 
-            // 정렬 기준 설정
-            Comparator<KcisaXml.Event> cmp = Comparator.comparing(
-                    e -> PeriodParser.parse(e.getPeriod() != null ? e.getPeriod() : e.getEventPeriod())
-                            .map(DateRange::start).orElse(LocalDate.MAX)
-            );
-            if ("views".equalsIgnoreCase(sort)) cmp = Comparator.comparingInt(e -> safeInt(e.getViewCount()));
-            if ("desc".equalsIgnoreCase(dir)) cmp = cmp.reversed();
+                List<KcisaXml.Event> events = kcisaClient.searchEvents(dtype, null, 1, 20)
+                        .blockOptional()
+                        .orElse(Collections.emptyList());
 
-            // 정렬 + 페이지네이션
-            List<KcisaXml.Event> sorted = upcoming.stream().sorted(cmp).toList();
-            int from = Math.min(page * size, sorted.size());
-            int to   = Math.min(from + size, sorted.size());
-
-            return new Slice<>(sorted.subList(from, to), sorted.size(), page, size, sort, dir);
+                if (!events.isEmpty()) {
+                    bucket.addAll(events);
+                }
+            } catch (InterruptedException e) {
+                log.warn("Thread sleep interrupted: {}", e.getMessage());
+                Thread.currentThread().interrupt(); // 스레드 인터럽트 상태 복원
+            } catch (Exception e) {
+                log.error("Error fetching events for dtype {}: {}", dtype, e.getMessage());
+            }
         }
 
-        /** 특정 dtype(title 기반) 검색 */
-        public List<KcisaXml.Event> search(String dtype, String title, int pageNo, int rows) {
-            return kcisaClient.searchEvents(dtype, title, pageNo, rows);
+        if (bucket.isEmpty()) {
+            return new Slice<>(Collections.emptyList(), 0, page, size, sort, dir);
         }
 
-        private int safeInt(String s) {
-            try { return Integer.parseInt(s == null ? "0" : s.trim()); }
-            catch (Exception e) { return 0; }
-        }
+        var filtered = bucket.stream()
+                .filter(Objects::nonNull) // 혹시 모를 null 값 제거
+                .distinct()
+                .filter(e -> {
+                    String p = e.getPeriod() != null ? e.getPeriod() : e.getEventPeriod();
+                    return PeriodParser.parse(p)
+                            .map(r -> !r.end().isBefore(today) && !r.start().isAfter(until))
+                            .orElse(true);
+                })
+                .toList();
 
-        /** 간단한 슬라이스 DTO */
-        public record Slice<T>(List<T> content, int total, int page, int size, String sort, String dir) {}
+        Comparator<KcisaXml.Event> cmp = Comparator.comparing(
+                e -> PeriodParser.parse(e.getPeriod() != null ? e.getPeriod() : e.getEventPeriod())
+                        .map(DateRange::start)
+                        .orElse(LocalDate.MAX)
+        );
+        if ("views".equalsIgnoreCase(sort)) {
+            cmp = Comparator.comparingInt(e -> {
+                try { return Integer.parseInt(e.getViewCount() == null ? "0" : e.getViewCount().trim()); }
+                catch (Exception ex) { return 0; }
+            });
+        }
+        if ("desc".equalsIgnoreCase(dir)) cmp = cmp.reversed();
+
+        var sorted = filtered.stream().sorted(cmp).toList();
+
+        int from = Math.min(page * size, sorted.size());
+        int to = Math.min(from + size, sorted.size());
+        var content = sorted.subList(from, to);
+
+        return new Slice<>(content, sorted.size(), page, size, sort, dir);
     }
 
+    public List<KcisaXml.Event> search(String dtype, String title, int pageNo, int rows) {
+        return kcisaClient.searchEvents(dtype, title, pageNo, rows)
+                .blockOptional()
+                .orElse(Collections.emptyList());
+    }
+
+    public record Slice<T>(List<T> content, int total, int page, int size, String sort, String dir) {}
+}

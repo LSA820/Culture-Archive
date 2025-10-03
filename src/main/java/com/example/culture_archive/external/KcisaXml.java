@@ -34,7 +34,6 @@ public class KcisaXml {
         @JacksonXmlProperty(localName = "item")
         private List<Event> item;
 
-        // 필요하면 totalCount, pageNo, numOfRows 도 여기에 선언 가능
         private String totalCount;
         private String pageNo;
         private String numOfRows;
