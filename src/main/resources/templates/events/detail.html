@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ko"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+  <meta charset="UTF-8"/>
+  <title th:text="${eventDetail.title}"></title>
+  <link rel="stylesheet" th:href="@{/css/bootstrap.min.css}"/>
+  <th:block th:replace="~{home :: #main-styles}"></th:block>
+  <style>
+    .review-card-compact{display:flex;align-items:flex-start;padding:1rem;border:1px solid #eee;border-radius:12px;background:#fff;box-shadow:0 4px 12px rgba(0,0,0,.05);margin-bottom:1rem;text-decoration:none;color:inherit}
+    .review-card-compact .avatar{width:40px;height:40px;border-radius:50%;background:var(--ca-blue-100);display:flex;align-items:center;justify-content:center;margin-right:1rem;font-size:1.1rem;flex-shrink:0;font-weight:bold;color:var(--ca-blue-600)}
+    .review-card-compact .review-content{flex-grow:1}
+    .review-card-compact .review-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}
+    .review-card-compact .review-author-name{font-weight:600}
+    .review-card-compact .review-rating-display{color:#f59e0b;font-weight:bold}
+    .review-card-compact .review-text{font-size:.95rem;color:#333;line-height:1.5;margin-bottom:.5rem}
+    .review-card-compact .review-date{font-size:.8rem;color:#6c757d}
+
+    /* 포스터 확대 힌트 + 모달 이미지 제한 */
+    .poster-wrap{cursor:zoom-in}
+    #posterModal .modal-content img{object-fit:contain;max-height:85vh}
+  </style>
+</head>
+<body>
+<div th:replace="~{fragments/header :: header}"></div>
+
+<div class="container py-5">
+  <!-- 전시 카드 -->
+  <div class="card event-card d-flex flex-row p-4 mb-5">
+    <!-- 클릭 시 모달로 확대 -->
+    <button type="button" class="poster-wrap p-0 border-0 bg-transparent"
+            data-bs-toggle="modal" data-bs-target="#posterModal" aria-label="포스터 확대 보기">
+      <img class="poster-img" th:src="${eventDetail.imageUrl}" th:alt="${eventDetail.title}">
+    </button>
+
+    <div class="d-flex flex-column flex-grow-1 ps-4">
+      <h2 class="fw-bold" th:text="${eventDetail.title}"></h2>
+      <p class="text-muted" th:text="${eventDetail.period}"></p>
+      <p class="text-muted" th:text="${eventDetail.site}"></p>
+      <hr>
+      <div class="mb-3">
+        <strong>평균 별점:</strong>
+        <span th:if="${eventDetail.averageRating > 0}" class="text-warning fw-bold">
+          ⭐ <span th:text="${eventDetail.averageRating}"></span>
+        </span>
+        <span th:if="${eventDetail.averageRating == 0}" class="text-muted">아직 별점이 없습니다.</span>
+      </div>
+      <div class="d-flex gap-2 mt-auto">
+        <a class="btn btn-ca" th:href="${eventDetail.sourceUrl}" target="_blank" rel="noopener">공식 홈페이지</a>
+        <div sec:authorize="isAuthenticated()">
+          <a th:if="${!eventDetail.userHasReviewed}"
+             th:href="@{/reviews/new(eventTitle=${eventDetail.title}, eventPlace=${eventDetail.site}, eventPosterUrl=${eventDetail.imageUrl}, eventPeriod=${eventDetail.period})}"
+             class="btn btn-outline-secondary">기록하기</a>
+          <a th:if="${eventDetail.userHasReviewed}"
+             th:href="@{/reviews/{id}(id=${eventDetail.userReviewId})}"
+             class="btn btn-outline-primary">기록 수정하기</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 후기 목록 -->
+  <div th:if="${#lists.isEmpty(eventDetail.reviews)}" class="alert alert-light border">
+    아직 작성된 리뷰가 없습니다.
+  </div>
+
+  <div class="row justify-content-center">
+    <div class="col-lg-9">
+      <a th:each="review : ${eventDetail.reviews}"
+         th:href="@{/reviews/{id}(id=${review.id})}"
+         class="review-card-compact">
+        <div class="avatar" th:text="${#strings.substring(review.author.username,0,1)}"></div>
+        <div class="review-content">
+          <div class="review-header">
+            <span class="review-author-name" th:text="${review.author.username}"></span>
+            <span class="review-rating-display" th:if="${review.rating != null}">
+              ⭐ <span th:text="${review.rating}"></span>
+            </span>
+          </div>
+          <p class="review-text" th:text="${review.comment}"></p>
+          <div class="review-date" th:text="${#temporals.format(review.createdAt,'yyyy.MM.dd')}"></div>
+        </div>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- 포스터 확대 모달 -->
+<div class="modal fade" id="posterModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-content bg-transparent border-0 position-relative">
+      <button type="button" class="btn-close position-absolute top-0 end-0 m-2"
+              data-bs-dismiss="modal" aria-label="닫기"></button>
+      <img class="w-100 rounded shadow"
+           th:src="${eventDetail.imageUrl}" th:alt="${eventDetail.title}">
+    </div>
+  </div>
+</div>
+
+<script th:src="@{/js/bootstrap.bundle.min.js}"></script>
+</body>
+</html>

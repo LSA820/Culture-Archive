@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="ko"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8"/>
+    <title>전시/공연 검색</title>
+    <link rel="stylesheet" th:href="@{/css/bootstrap.min.css}"/>
+    <th:block th:replace="~{home :: #main-styles}"></th:block>
+    <style>
+        /* 여백과 정렬 보정 */
+        .search-form { margin-bottom: 1.5rem; }
+        .results-title { margin-top: 1.25rem; margin-bottom: 1rem; }
+        .event-card .text-start { text-align: left!important; }
+        .event-card .align-items-start { align-items: flex-start!important; }
+    </style>
+</head>
+<body>
+<div th:replace="~{fragments/header :: header}"></div>
+
+<div class="container py-5">
+    <div class="hero-card mb-4">
+        <h1 class="fw-bold mb-2">이벤트 검색</h1>
+        <p></p>
+        <form th:action="@{/events/search}" method="get" class="search-form">
+            <div class="row g-2">
+                <div class="col-md-3">
+                    <select name="region" class="form-select form-select-lg">
+                        <option value="">지역(전체)</option>
+                        <option value="서울" th:selected="${region == '서울'}">서울</option>
+                        <option value="경기" th:selected="${region == '경기'}">경기</option>
+                        <option value="인천" th:selected="${region == '인천'}">인천</option>
+                        <option value="부산" th:selected="${region == '부산'}">부산</option>
+                        <option value="대구" th:selected="${region == '대구'}">대구</option>
+                        <option value="광주" th:selected="${region == '광주'}">광주</option>
+                        <option value="대전" th:selected="${region == '대전'}">대전</option>
+                        <option value="울산" th:selected="${region == '울산'}">울산</option>
+                        <option value="세종" th:selected="${region == '세종'}">세종</option>
+                        <option value="강원" th:selected="${region == '강원'}">강원</option>
+                        <option value="충북" th:selected="${region == '충북'}">충북</option>
+                        <option value="충남" th:selected="${region == '충남'}">충남</option>
+                        <option value="전북" th:selected="${region == '전북'}">전북</option>
+                        <option value="전남" th:selected="${region == '전남'}">전남</option>
+                        <option value="경북" th:selected="${region == '경북'}">경북</option>
+                        <option value="경남" th:selected="${region == '경남'}">경남</option>
+                        <option value="제주" th:selected="${region == '제주'}">제주</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select name="dtype" class="form-select form-select-lg">
+                        <option value="">종류(전체)</option>
+                        <option value="전시" th:selected="${dtype == '전시'}">전시</option>
+                        <option value="공연" th:selected="${dtype == '공연'}">공연</option>
+                        <option value="뮤지컬" th:selected="${dtype == '뮤지컬'}">뮤지컬</option>
+                        <option value="국악" th:selected="${dtype == '국악'}">국악</option>
+                        <option value="연극" th:selected="${dtype == '연극'}">연극</option>
+                        <option value="콘서트" th:selected="${dtype == '콘서트'}">콘서트</option>
+                        <option value="축제" th:selected="${dtype == '축제'}">축제</option>
+                        <option value="교육/체험" th:selected="${dtype == '교육/체험'}">교육/체험</option>
+                        <option value="클래식" th:selected="${dtype == '클래식'}">클래식</option>
+                        <option value="기타" th:selected="${dtype == '기타'}">기타</option>
+                    </select>
+                </div>
+                <div class="col-md">
+                    <input type="text" class="form-control form-control-lg" name="title" placeholder="제목으로 검색"
+                           th:value="${title}">
+                </div>
+                <div class="col-md-auto">
+                    <button class="btn btn-ca btn-lg w-100" type="submit">검색</button>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-center align-items-center mt-3 gap-4">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="ongoing" name="ongoing"
+                               th:checked="${ongoing}">
+                        <label class="form-check-label" for="ongoing">현재 진행 중만 보기</label>
+                    </div>
+
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="includePast" name="includePast"
+                               th:checked="${includePast}">
+                        <label class="form-check-label" for="includePast">과거 포함</label>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-center">
+                    <label for="sort" class="form-label me-2 mb-0 text-secondary">정렬:</label>
+                    <select name="sort" id="sort" class="form-select form-select-sm" style="width:auto;">
+                        <option value="latest" th:selected="${sort == 'latest'}">최신순</option>
+                        <option value="oldest" th:selected="${sort == 'oldest'}">오래된순</option>
+                        <!-- <option value="views" th:selected="${sort == 'views'}">조회수순</option> -->
+                    </select>
+                </div>
+            </div>
+
+            <h2 class="results-title">검색 결과</h2>
+
+            <div class="row row-cols-1 row-cols-md-2 g-4 mt-1">
+                <div class="col" th:each="e : ${events}">
+                    <div class="card event-card h-100 d-flex flex-row p-3">
+                        <div class="poster-wrap">
+                            <img class="poster-img" th:src="${e.imageUrl}" th:alt="${e.title}">
+                        </div>
+                        <div class="d-flex flex-column justify-content-between flex-grow-1 ps-3 align-items-start text-start">
+                            <div>
+                                <h6 class="fw-semibold" th:text="${e.title}"></h6>
+                                <div class="text-secondary small" th:text="${e.displayPeriod}"></div>
+                                <div class="text-secondary small" th:if="${!#strings.isEmpty(e.deadlineLabel)}"
+                                     th:text="${e.deadlineLabel}"></div>
+                                <div class="text-secondary small" th:text="${e.site}"></div>
+                            </div>
+                            <div class="d-flex gap-2 mt-2">
+                                <a class="btn btn-sm btn-ca" th:href="@{/events/{id}(id=${e.id})}">상세보기</a>
+                                <a class="btn btn-sm btn-outline-secondary"
+                                   sec:authorize="isAuthenticated()"
+                                   th:href="@{/reviews/new(
+                        eventTitle=${e.title},
+                        eventPlace=${e.site},
+                        eventPosterUrl=${e.imageUrl},
+                        eventPeriod=${e.displayPeriod}
+                   )}">기록하기</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12" th:if="${events == null or #lists.isEmpty(events)}">
+                <div class="alert alert-light border mt-4">검색 결과가 없습니다.</div>
+            </div>
+
+            <nav aria-label="Page navigation" class="d-flex justify-content-center mt-5" th:if="${totalPages > 1}">
+                <ul class="pagination">
+                    <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
+                        <a class="page-link"
+                           th:href="@{/events/search(region=${region}, dtype=${dtype}, title=${title}, includePast=${includePast}, ongoing=${ongoing}, sort=${sort}, page=${currentPage-1})}">&laquo;</a>
+                    </li>
+                    <li class="page-item" th:each="p : ${#numbers.sequence(startPage, endPage)}"
+                        th:classappend="${p == currentPage} ? 'active'">
+                        <a class="page-link"
+                           th:href="@{/events/search(region=${region}, dtype=${dtype}, title=${title}, includePast=${includePast}, ongoing=${ongoing}, sort=${sort}, page=${p})}"
+                           th:text="${p + 1}"></a>
+                    </li>
+                    <li class="page-item" th:classappend="${currentPage >= totalPages - 1} ? 'disabled'">
+                        <a class="page-link"
+                           th:href="@{/events/search(region=${region}, dtype=${dtype}, title=${title}, includePast=${includePast}, ongoing=${ongoing}, sort=${sort}, page=${currentPage+1})}">&raquo;</a>
+                    </li>
+                </ul>
+            </nav>
+        </form>
+    </div>
+</div>
+
+<script th:src="@{/js/bootstrap.bundle.min.js}"></script>
+</body>
+</html>

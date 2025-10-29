@@ -1,0 +1,82 @@
+<!-- src/main/resources/templates/profile/feed.html -->
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+  <meta charset="UTF-8"/>
+  <title th:text="${user.username} + '의 피드'">피드</title>
+  <link rel="stylesheet" th:href="@{/css/bootstrap.min.css}"/>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <style th:replace="~{home :: #main-styles}"></style>
+  <style>
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+    .card-r{border:0;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.06)}
+  </style>
+</head>
+<body>
+<div th:replace="~{fragments/header :: header}"></div>
+
+<div class="container py-5">
+
+  <!-- 상단 프로필 헤더 -->
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <div class="d-flex align-items-center gap-3">
+      <div style="width:56px;height:56px;border-radius:50%;background:var(--ca-blue-100)"
+           class="d-inline-flex align-items-center justify-content-center fw-bold fs-4"
+           th:text="${#strings.substring(user.username,0,1)}"></div>
+      <div>
+        <h3 class="mb-1" th:text="${user.username}">user</h3>
+        <small class="text-secondary">
+          <span th:text="'게시물 ' + ${#lists.size(reviews)}"></span>
+          · <span th:text="'구독자 ' + ${followerCount}"></span>
+          · <span th:text="'구독 ' + ${followingCount}"></span>
+        </small>
+      </div>
+    </div>
+
+    <!-- 팔로우/취소 버튼 (본인 프로필은 숨김) -->
+    <div class="follow-slot"
+         sec:authorize="isAuthenticated()"
+         th:if="${!self}">
+      <div th:replace="~{profile/feed :: followBtn(authorId=${user.id}, following=${following})}"></div>
+    </div>
+  </div>
+
+  <!-- 피드 카드 -->
+  <div class="grid">
+    <a th:each="r:${reviews}" th:href="@{/reviews/{id}(id=${r.id})}"
+       class="card card-r text-decoration-none text-reset">
+      <img th:src="${r.eventPosterUrl}"
+           onerror="this.onerror=null;this.src='https://via.placeholder.com/560x800?text=Poster'">
+      <div class="card-body">
+        <div class="small text-secondary" th:text="${#temporals.format(r.createdAt,'yyyy.MM.dd')}"></div>
+        <div class="fw-semibold text-truncate" th:text="${r.eventTitle}"></div>
+        <div class="small text-truncate" th:text="${r.eventPlace}"></div>
+      </div>
+    </a>
+  </div>
+</div>
+
+<!-- 같은 파일 내 팔로우 버튼 조각 -->
+<div th:fragment="followBtn (authorId, following)">
+  <!-- 구독 -->
+  <form th:if="${!following}" method="post"
+        th:action="@{/u/{id}/follow(id=${authorId})}"
+        th:attr="hx-post=@{/u/{id}/follow(id=${authorId})}"
+        hx-target="closest .follow-slot" hx-swap="outerHTML">
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+    <button type="submit" class="btn btn-sm btn-outline-primary">구독</button>
+  </form>
+
+  <!-- 구독취소 -->
+  <form th:if="${following}" method="post"
+        th:action="@{/u/{id}/unfollow(id=${authorId})}"
+        th:attr="hx-post=@{/u/{id}/unfollow(id=${authorId})}"
+        hx-target="closest .follow-slot" hx-swap="outerHTML">
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+    <button type="submit" class="btn btn-sm btn-outline-secondary">구독취소</button>
+  </form>
+</div>
+
+<script th:src="@{/js/bootstrap.bundle.min.js}"></script>
+</body>
+</html>

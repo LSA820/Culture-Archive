@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"><body>
+<!-- 댓글 목록 프래그먼트 -->
+<div th:fragment="commentList(comments)">
+    <div th:if="${#lists.isEmpty(comments)}" class="text-secondary small">아직 댓글이 없습니다.</div>
+    <div class="vstack gap-2" th:each="c : ${comments}">
+        <div class="border rounded-3 p-2">
+            <div class="d-flex justify-content-between">
+                <div class="small text-secondary">
+                    <span th:text="${c.authorName}">user</span>
+                    · <span th:text="${#temporals.format(c.createdAt,'yyyy.MM.dd HH:mm')}"></span>
+                </div>
+                <form th:if="${c.mine}" method="post"
+                      th:action="@{/reviews/{rid}/comments/{cid}/delete(rid=${c.review.id},cid=${c.id})}"
+                      hx-post="" hx-target="#commentList" hx-swap="outerHTML">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <button class="btn btn-sm btn-outline-danger">삭제</button>
+                </form>
+            </div>
+            <div class="mt-1" style="white-space:pre-wrap" th:text="${c.content}"></div>
+        </div>
+    </div>
+</div>
+</body></html>

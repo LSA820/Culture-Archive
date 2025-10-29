@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>내 피드</title>
+    <link rel="stylesheet" th:href="@{/css/bootstrap.min.css}"/>
+    <style>
+        :root{--ca-blue-50:#f0f6ff;--ca-blue-100:#e4f0ff;--ca-blue-500:#4e8fff;--ca-blue-600:#3a75e6;--ca-ink:#0f172a;--ca-muted:#6b7280}
+        body{background:linear-gradient(180deg,var(--ca-blue-50),#fff 60%)}
+        .btn-ca{background:var(--ca-blue-500);border-color:var(--ca-blue-500);color:#fff}
+        .btn-ca:hover{background:var(--ca-blue-600);border-color:var(--ca-blue-600);color:#fff}
+        .profile-card{background:#fff;border-radius:16px;padding:2rem;margin:2.5rem auto 2rem;max-width:1000px;
+          box-shadow:0 8px 24px rgba(0,0,0,.05);border:1px solid #e9ecef}
+        .avatar{width:120px;height:120px;border-radius:50%;background:#fff;border:2px solid #dee2e6;
+          display:flex;align-items:center;justify-content:center;margin-bottom:1rem}
+        .avatar svg{width:60%;height:60%;color:#ced4da}
+        .stats{display:flex;gap:2rem;justify-content:center;margin:1rem 0 0 0}
+        .stat a{color:var(--ca-ink);text-decoration:none}
+        .stat .label{font-size:1.05rem;color:var(--ca-muted)}
+        .stat .num{font-size:1.25rem;font-weight:700;margin-left:.25rem}
+        .feed-wrap{max-width:1000px;margin:0 auto 64px}
+        .feed-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.5rem}
+        .feed-item{position:relative;overflow:hidden;border-radius:12px;aspect-ratio:2/3;
+          box-shadow:0 8px 16px rgba(0,0,0,.1);transition:transform .2s,box-shadow .2s}
+        .feed-item:hover{transform:translateY(-5px);box-shadow:0 12px 24px rgba(0,0,0,.15)}
+        .feed-item img{width:100%;height:100%;object-fit:cover}
+        .delete-icon{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:50%;
+          background:rgba(0,0,0,.6);color:#fff;display:none;place-items:center;font-size:1rem;cursor:pointer;border:2px solid #fff}
+        .feed-grid.edit-mode .delete-icon{display:grid}
+        @media (max-width: 992px){.feed-grid{grid-template-columns:repeat(3,1fr)}}
+        @media (max-width: 768px){.feed-grid{grid-template-columns:repeat(2,1fr)}}
+    </style>
+</head>
+<body>
+<div th:replace="~{fragments/header :: header}"></div>
+
+<section class="profile-card text-center">
+    <div class="avatar mx-auto">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1z"/>
+            <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6"/>
+        </svg>
+    </div>
+    <h2 class="mb-1" th:text="${username}">username</h2>
+
+    <div class="stats">
+        <div class="stat">
+            <span class="label">게시물</span><span class="num" th:text="${postCount}">0</span>
+        </div>
+        <div class="stat">
+            <a href="#" data-bs-toggle="modal" data-bs-target="#followersModal">
+                <span class="label">팔로워</span><span class="num" th:text="${followerCount}">0</span>
+            </a>
+        </div>
+        <div class="stat">
+            <a href="#" data-bs-toggle="modal" data-bs-target="#followingModal">
+                <span class="label">팔로우</span><span class="num" th:text="${followingCount}">0</span>
+            </a>
+        </div>
+    </div>
+</section>
+
+<div class="feed-wrap">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">나의 기록</h4>
+        <button id="edit-feed-btn" class="btn btn-outline-secondary btn-sm">편집</button>
+    </div>
+
+    <div id="feed-grid" class="feed-grid">
+        <div th:each="review : ${myReviews}" class="feed-item">
+            <!-- 여기: from='my-feed' 추가 -->
+            <a th:href="@{/reviews/{id}(id=${review.id}, from='my-feed')}">
+                <img th:src="${review.eventPosterUrl}"
+                     onerror="this.onerror=null;this.src='https://via.placeholder.com/400x600?text=No+Image'">
+            </a>
+            <div class="delete-icon" th:data-review-id="${review.id}"><span>&times;</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- following modal -->
+<div class="modal fade" id="followingModal" tabindex="-1" aria-labelledby="followingModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="followingModalLabel">내가 구독 중인 사람</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div th:if="${#lists.isEmpty(followingUsers)}" class="text-muted text-center py-3">
+                    아직 구독 중인 사용자가 없습니다.
+                </div>
+                <div class="list-group" th:if="${!#lists.isEmpty(followingUsers)}">
+                    <a class="list-group-item list-group-item-action d-flex align-items-center gap-3"
+                       th:each="u : ${followingUsers}" th:href="@{/u/{id}(id=${u.id})}">
+                        <div class="rounded-circle bg-light border d-flex align-items-center justify-content-center"
+                             style="width:40px;height:40px;font-weight:700"
+                             th:text="${#strings.substring(u.username,0,1)}">U
+                        </div>
+                        <span th:text="${u.username}">username</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- followers modal -->
+<div class="modal fade" id="followersModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">나를 구독하는 사람</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div th:if="${#lists.isEmpty(followerUsers)}" class="text-muted text-center py-3">
+                    아직 팔로워가 없습니다.
+                </div>
+                <div class="list-group" th:if="${!#lists.isEmpty(followerUsers)}">
+                    <a class="list-group-item list-group-item-action d-flex align-items-center gap-3"
+                       th:each="u : ${followerUsers}" th:href="@{/u/{id}(id=${u.id})}">
+                        <div class="rounded-circle bg-light border d-flex align-items-center justify-content-center"
+                             style="width:40px;height:40px;font-weight:700"
+                             th:text="${#strings.substring(u.username,0,1)}">U
+                        </div>
+                        <span th:text="${u.username}">username</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script th:src="@{/js/bootstrap.bundle.min.js}"></script>
+<script th:inline="javascript">
+    document.addEventListener('DOMContentLoaded', () => {
+      const editBtn = document.getElementById('edit-feed-btn');
+      const feedGrid = document.getElementById('feed-grid');
+      editBtn.addEventListener('click', () => {
+        feedGrid.classList.toggle('edit-mode');
+        const on = feedGrid.classList.contains('edit-mode');
+        editBtn.textContent = on ? '완료' : '편집';
+        editBtn.classList.toggle('btn-ca', on);
+        editBtn.classList.toggle('btn-outline-secondary', !on);
+      });
+      feedGrid.addEventListener('click', (e) => {
+        const icon = e.target.closest('.delete-icon'); if (!icon) return;
+        e.preventDefault();
+        if (!confirm('정말로 이 기록을 삭제하시겠습니까?')) return;
+        const form = document.createElement('form');
+        form.method = 'post';
+        form.action = '/reviews/' + icon.dataset.reviewId + '/delete';
+        const csrfName  = /*[[${_csrf.parameterName}]]*/ '_csrf';
+        const csrfToken = /*[[${_csrf.token}]]*/ '';
+        const input = document.createElement('input');
+        input.type='hidden'; input.name=csrfName; input.value=csrfToken;
+        form.appendChild(input); document.body.appendChild(form); form.submit();
+      });
+    });
+</script>
+</body>
+</html>

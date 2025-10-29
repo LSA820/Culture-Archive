@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>커뮤니티</title>
+    <link rel="stylesheet" th:href="@{/css/bootstrap.min.css}"/>
+    <style th:replace="~{home :: #main-styles}"></style>
+    <style>
+        .grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(500px, 1fr));gap:22px;align-items:start;}
+        .r-card{border:0;border-radius:20px;box-shadow:0 10px 28px rgba(0,0,0,.07);padding:20px;
+                display:flex;gap:20px;align-items:flex-start;text-decoration:none;color:inherit;background:#fff}
+        .r-thumb{width:160px;height:240px;border-radius:18px;overflow:hidden;flex:0 0 auto;background:#f8f9fa}
+        .r-thumb img{width:100%;height:100%;object-fit:cover}
+        .r-title{font-weight:800;font-size:1.15rem;margin-bottom:10px}
+        .r-meta{font-size:1rem;color:#64748b}
+        .r-comment{-webkit-line-clamp:3;display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden;margin-top:12px;font-size:1rem;line-height:1.5;}
+        .r-author{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+        .r-author span{font-size: 1rem;}
+        .avatar{width:40px;height:40px;border-radius:50%;background:var(--ca-blue-100);
+                display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;}
+        .rating{font-weight:800;color:#f59e0b;font-size:1.1rem;margin-bottom:10px;}
+    </style>
+</head>
+<body>
+<div th:replace="~{fragments/header :: header}"></div>
+<div class="container py-5">
+    <div class="text-center mb-4">
+        <h1 class="fw-bold">커뮤니티</h1>
+        <p class="text-muted">다른 사람들의 리뷰를 만나보세요.</p>
+    </div>
+
+    <!-- 검색 -->
+    <form th:action="@{/reviews}" method="get" class="mb-4 d-flex justify-content-center gap-2">
+        <input type="text" class="form-control w-50" name="keyword"
+               placeholder="작품 이름으로 검색"
+               th:value="${keyword}">
+        <button type="submit" class="btn btn-ca">검색</button>
+    </form>
+
+    <div class="grid">
+        <a th:each="r : ${reviews}" th:href="@{/reviews/{id}(id=${r.id})}" class="r-card">
+            <div class="r-thumb">
+                <img th:src="${r.eventPosterUrl}"
+                     onerror="this.onerror=null;this.src='https://via.placeholder.com/160x240?text=Poster'">
+            </div>
+            <div class="flex-grow-1 overflow-hidden">
+                <div class="r-title text-truncate" th:text="${r.eventTitle}"></div>
+
+                <!-- 작성자: null-safe -->
+                <div class="r-author text-decoration-none text-reset"
+                     th:if="${r.author != null}"
+                     role="button" style="cursor:pointer"
+                     th:attr="data-url=@{/u/{id}(id=${r.author.id})}"
+                     onclick="event.stopPropagation(); location.href=this.dataset.url;">
+                    <span class="avatar"
+                          th:text="${(r.author.username != null) ? #strings.substring(r.author.username,0,1) : 'U'}">U</span>
+                    <span class="text-truncate" th:text="${r.author.username}">username</span>
+                </div>
+                <div class="r-author" th:if="${r.author == null}">
+                    <span class="avatar">U</span>
+                    <span class="text-truncate text-muted">Unknown</span>
+                </div>
+
+                <div class="rating" th:if="${r.rating != null}">★ <span th:text="${r.rating}"></span></div>
+
+                <div class="r-meta text-truncate" th:text="${r.eventPlace}"></div>
+                <div class="r-comment" th:text="${r.comment}"></div>
+                <div class="r-meta mt-2" th:text="${#temporals.format(r.createdAt,'yyyy.MM.dd')}"></div>
+            </div>
+        </a>
+    </div>
+    <!-- 페이징 -->
+    <nav class="d-flex justify-content-center mt-4" th:if="${totalPages > 1}">
+        <ul class="pagination">
+            <li class="page-item" th:classappend="${page==0} ? 'disabled'">
+                <a class="page-link" th:href="@{/reviews(page=${page-1},keyword=${keyword})}">&laquo;</a>
+            </li>
+            <li class="page-item" th:each="p : ${#numbers.sequence(0,totalPages-1)}"
+                th:classappend="${p==page} ? 'active'">
+                <a class="page-link" th:text="${p+1}"
+                   th:href="@{/reviews(page=${p},keyword=${keyword})}"></a>
+            </li>
+            <li class="page-item" th:classappend="${page>=totalPages-1} ? 'disabled'">
+                <a class="page-link" th:href="@{/reviews(page=${page+1},keyword=${keyword})}">&raquo;</a>
+            </li>
+        </ul>
+    </nav>
+</div>
+</body>
+</html>

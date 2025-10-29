@@ -12,7 +12,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "event")
+@Table(name = "arc_event")
 public class Event {
 
     @Id
@@ -22,16 +22,16 @@ public class Event {
     private String title;
     private String type;          // 전시/공연 등
     private String eventSite;     // 장소
-
+    private String region;
     // 기간(문자열 그대로 보관)
     private String period;
 
     // 원문 상세/이미지
     private String sourceUrl;     // KCISA의 상세 url
-    private String imageUrl;      //  imageObject를 저장
+    private String imageUrl;
 
-    // 정렬/필터용(선택)
-    private Integer viewCount;    // 없으면 null
+    // 정렬/필터용
+    private Integer viewCount;
     private LocalDate startDate;
     private LocalDate endDate;
 }

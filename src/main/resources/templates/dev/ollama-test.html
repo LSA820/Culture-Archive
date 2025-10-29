@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Ollama · OCR · LLaVA 키워드 파이프라인</title>
+    <link rel="stylesheet" th:href="@{/css/bootstrap.min.css}"/>
+</head>
+<body>
+<div class="container mt-5" style="max-width: 920px;">
+    <h1 class="mb-3">OCR → LLaVA → 화이트리스트 키워드</h1>
+    <p class="text-secondary">업로드 후 파이프라인 각 단계 결과를 개발자용으로 보여줍니다.</p>
+
+    <form th:action="@{/dev/ollama/analyze}" method="post" enctype="multipart/form-data" class="card p-3 my-4">
+        <div class="mb-3">
+            <label for="imageFile" class="form-label">이미지 파일</label>
+            <input type="file" class="form-control" id="imageFile" name="imageFile" accept="image/*" required>
+        </div>
+        <div class="mb-3">
+            <label for="prompt" class="form-label">LLaVA 프롬프트</label>
+            <textarea class="form-control" id="prompt" name="prompt" rows="4"
+                      th:text="${prompt != null} ? ${prompt} : ''"></textarea>
+            <small class="text-muted">비우면 기본 프롬프트 사용.</small>
+        </div>
+        <button type="submit" class="btn btn-primary">분석 실행</button>
+    </form>
+
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+    <div th:if="${ocrText != null}" class="card mb-3">
+        <div class="card-header fw-semibold">① OCR 추출 텍스트</div>
+        <div class="card-body"><pre th:text="${ocrText}" style="white-space:pre-wrap"></pre></div>
+    </div>
+
+    <div th:if="${llavaRaw != null}" class="card mb-3">
+        <div class="card-header fw-semibold">② LLaVA 원문 응답</div>
+        <div class="card-body"><pre th:text="${llavaRaw}" style="white-space:pre-wrap"></pre></div>
+    </div>
+
+    <div th:if="${llavaChosen != null}" class="card mb-3">
+        <div class="card-header fw-semibold">③ LLaVA 기반 화이트리스트 키워드</div>
+        <div class="card-body">
+            <span th:each="k : ${llavaChosen}" class="badge text-bg-primary me-1" th:text="${k}"></span>
+            <div th:if="${#lists.isEmpty(llavaChosen)}" class="text-muted">선택 없음</div>
+        </div>
+    </div>
+
+    <div th:if="${fallbackChosen != null}" class="card mb-5">
+        <div class="card-header fw-semibold">④ 백업 매칭(정규식 직접 매칭)</div>
+        <div class="card-body">
+            <span th:each="k : ${fallbackChosen}" class="badge text-bg-secondary me-1" th:text="${k}"></span>
+            <div th:if="${#lists.isEmpty(fallbackChosen)}" class="text-muted">선택 없음</div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

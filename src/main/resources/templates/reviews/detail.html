@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8"/>
+    <title>상세 기록</title>
+    <link rel="stylesheet" th:href="@{/css/bootstrap.min.css}"/>
+    <th:block th:replace="~{home :: #main-styles}"></th:block>
+    <style>
+        .shell{display:grid;place-items:start center;padding:32px 16px}
+        .page-card{width:min(860px,94vw);border:0;border-radius:var(--card-r);background:#fff;box-shadow:0 18px 60px rgba(15,23,42,.08)}
+        .poster-wrap{width:140px;aspect-ratio:2/3;border-radius:12px;background:#fff;border:1px solid #edf2f7;overflow:hidden;flex:0 0 auto}
+        .poster-img{width:100%;height:100%;object-fit:cover}
+        .meta-title{color:var(--ca-ink);font-weight:700;margin-bottom:.25rem}
+        .meta-sub{color:#475569;font-size:.9rem}
+        .form-label{font-weight:600;color:var(--ca-ink)}
+        .divider{height:1px;background:#eef2ff;margin:20px 0}
+        .comment-display{white-space:pre-wrap;font-size:1rem;line-height:1.6}
+        .author-card{border:1px solid #eef2ff;border-radius:14px;padding:14px;background:#fff}
+        .author-ava{width:40px;height:40px;border-radius:50%;background:var(--ca-blue-100);display:inline-flex;align-items:center;justify-content:center;font-weight:700}
+        .author-name{font-weight:700}
+        .author-meta{font-size:.9rem;color:#64748b}
+        .author-star{color:#f59e0b;font-weight:800}
+    </style>
+</head>
+<body>
+<div th:replace="~{fragments/header :: header}"></div>
+
+<div class="shell">
+    <div class="card page-card">
+        <div class="card-body p-4 p-md-5">
+
+            <!-- 상단: 포스터 + 기본정보 행 -->
+            <div class="d-flex gap-3 gap-md-4 align-items-start">
+                <div class="poster-wrap">
+                    <img class="poster-img" th:src="${review.eventPosterUrl}" th:alt="${review.eventTitle}"/>
+                </div>
+
+                <div class="flex-grow-1">
+                    <h4 class="meta-title" th:text="${review.eventTitle}"></h4>
+                    <div class="meta-sub" th:text="${review.eventPlace}"></div>
+                    <div class="meta-sub" th:text="${review.eventPeriod}"></div>
+
+                    <!-- 작성자 카드: author* 모델 속성만 사용 -->
+                    <div class="author-card my-3">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="author-ava" th:text="${authorInitial != null ? authorInitial : 'U'}">U</div>
+                                <div>
+                                    <a class="author-name text-decoration-none"
+                                       th:if="${authorId != null}"
+                                       th:href="@{/u/{id}(id=${authorId})}"
+                                       th:text="${authorName}">username</a>
+                                    <span class="author-name" th:if="${authorId == null}"
+                                          th:text="${authorName != null ? authorName : 'Unknown'}">Unknown</span>
+                                    <div class="author-meta"
+                                         th:text="${#temporals.format(review.createdAt,'yyyy.MM.dd HH:mm')}"></div>
+                                </div>
+                            </div>
+                            <div class="author-star ms-auto" th:if="${review.rating != null}">
+                                ★ <span th:text="${review.rating}"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div> <!-- 상단 행 종료 -->
+
+            <div class="divider"></div>
+
+            <!-- 작성자 본인만 편집: 컨트롤러에서 isMine 제공 -->
+            <div th:if="${review.id == null or isMine}">
+                <form th:action="${review.id == null} ? @{/reviews/new} : @{/reviews/{id}/update(id=${review.id})}"
+                      th:object="${review}" method="post" class="mt-3">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <input type="hidden" th:field="*{eventTitle}"/>
+                    <input type="hidden" th:field="*{eventPlace}"/>
+                    <input type="hidden" th:field="*{eventPosterUrl}"/>
+                    <input type="hidden" th:field="*{eventPeriod}"/>
+
+                    <div class="mb-3" style="max-width:160px">
+                        <label class="form-label">별점</label>
+                        <input class="form-control" type="number" min="0" max="5" step="0.5"
+                               th:field="*{rating}" placeholder="0~5"/>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="comment" class="form-label">코멘트</label>
+                        <textarea id="comment" class="form-control" rows="8" placeholder="감상을 기록해보세요."
+                                  th:field="*{comment}"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-ca w-100">저장</button>
+                </form>
+            </div>
+
+            <!-- 타인 읽기 전용 -->
+            <div th:if="${review.id != null and !isMine}" class="mt-3">
+                <div class="divider"></div>
+                <p class="comment-display" th:text="${review.comment}"></p>
+            </div>
+
+            <!-- 댓글 섹션 -->
+            <div class="divider"></div>
+            <section id="comments">
+                <h5 class="mb-3" th:if="${comments != null and !#lists.isEmpty(comments)}">댓글</h5>
+
+                <!-- 댓글 작성폼: showCommentForm=true일 때만 -->
+                <form sec:authorize="isAuthenticated()" class="mb-3"
+                      th:if="${review.id != null and showCommentForm}"
+                      th:action="@{/reviews/{id}/comments(id=${review.id})}" method="post">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <div class="input-group">
+                        <textarea class="form-control" name="content" rows="2" placeholder="댓글을 입력하세요" required></textarea>
+                        <button type="submit" class="btn btn-ca">등록</button>
+                    </div>
+                </form>
+
+                <!-- 댓글 목록 -->
+                <div class="vstack gap-2" th:if="${comments != null and !#lists.isEmpty(comments)}">
+                    <div class="border rounded-3 p-2" th:each="c : ${comments}">
+                        <div class="d-flex justify-content-between">
+                            <div class="small text-secondary">
+                                <span th:text="${c.authorName}">author</span>
+                                · <span th:text="${#temporals.format(c.createdAt,'yyyy.MM.dd HH:mm')}"></span>
+                            </div>
+                            <form th:if="${c.mine}" method="post"
+                                  th:action="@{/reviews/{rid}/comments/{cid}/delete(rid=${review.id},cid=${c.id})}">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                <button class="btn btn-sm btn-outline-danger">삭제</button>
+                            </form>
+                        </div>
+                        <div class="mt-1" style="white-space:pre-wrap" th:text="${c.content}"></div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </div>
+</div>
+</body>
+</html>

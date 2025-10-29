@@ -1,170 +1,213 @@
 <!doctype html>
-<html xmlns:th="http://www.thymeleaf.org"
-      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
-      lang="ko">
+<html xmlns:th="http://www.thymeleaf.org" lang="ko" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8"/>
     <title>Culture Archive</title>
     <link rel="stylesheet" th:href="@{/css/bootstrap.min.css}"/>
-
-    <!-- HTMX: 전시일정 부분만 AJAX로 갈아끼우기 위해 사용 -->
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-
-    <style>
-        :root{
-          --ca-blue-50:#f0f6ff; --ca-blue-100:#e4f0ff; --ca-blue-400:#72a7ff;
-          --ca-blue-500:#4e8fff; --ca-blue-600:#3a75e6; --ca-ink:#0f172a; --ca-muted:#6b7280; --card-r:16px;
-        }
+    <style id="main-styles">
+        :root{--ca-blue-50:#f0f6ff; --ca-blue-100:#e4f0ff; --ca-blue-400:#72a7ff; --ca-blue-500:#e8f0ff; --ca-blue-600:#3a75e6; --ca-ink:#0f172a; --ca-muted:#6b7280; --card-r:16px;}
         body{background:linear-gradient(180deg,var(--ca-blue-50),#fff 60%);}
         .navbar{box-shadow:0 2px 8px rgba(0,0,0,.04);}
-        .btn-ca{background:var(--ca-blue-500); border-color:var(--ca-blue-500); color:#fff;}
-        .btn-ca:hover{background:var(--ca-blue-600); border-color:var(--ca-blue-600);}
-        .hero-card{border-radius:var(--card-r); background:#fff; box-shadow:0 12px 40px rgba(0,0,0,.06); padding:3rem 2rem; margin-top:2rem; text-align:center;}
+        .btn-ca{background:var(--ca-blue-600); border-color:var(--ca-blue-600); color:#fff;}
+        .btn-ca:hover{background:var(--ca-blue-500); border-color:var(--ca-blue-500);}
+        .hero-card{border-radius:var(--card-r); background:#fff; box-shadow:0 12px 40px rgba(0,0,0,.06); padding:2.25rem 1.5rem; margin-top:2rem; text-align:center;}
+        .hero-title{font-weight:800; letter-spacing:-.3px; color:var(--ca-ink);}
+        .hero-sub{color:#6b7280;}
+        .hero-actions{max-width:720px; margin:0 auto;}
+        .search-wrap{display:flex; gap:.5rem; align-items:center; justify-content:center;}
+        .search-wrap .form-control{height:44px;}
+        .btn-search{height:44px; min-width:84px; white-space:nowrap;}
+        .btn-icon{display:inline-flex; align-items:center; gap:.4rem; padding:.5rem .8rem; border-radius:999px;}
+        .btn-icon svg{width:18px; height:18px;}
         .poster-wrap{width:120px; height:180px; overflow:hidden; border-radius:var(--card-r); background:#f8f9fa; flex:0 0 auto; display:flex; align-items:center; justify-content:center;}
         .poster-img{width:100%; height:100%; object-fit:cover;}
         .event-card{border:0; border-radius:var(--card-r); box-shadow:0 8px 24px rgba(0,0,0,.05); transition:transform .2s; min-height:200px;}
         .event-card:hover{transform:translateY(-4px);}
-        .chip{display:flex; align-items:center; gap:.5rem; background:#fff; border-radius:999px; padding:.5rem 1rem; box-shadow:0 2px 8px rgba(0,0,0,.06); font-size:.9rem;}
-        .chip .avatar{width:26px; height:26px; border-radius:50%; background:var(--ca-blue-100); display:flex; align-items:center; justify-content:center; color:var(--ca-muted);}
+
+        /* 커뮤니티 카드 스타일 */
+        .review-card{border:0;border-radius:var(--card-r);box-shadow:0 8px 24px rgba(0,0,0,.05)}
+        .review-thumb{width:84px;height:120px;border-radius:12px;overflow:hidden;flex:0 0 auto;background:#f8f9fa}
+        .review-thumb img{width:100%;height:100%;object-fit:cover}
+        .rating-badge{font-weight:700;color:#f59e0b}
+        .review-card {
+        min-height: 180px;
+        }
+        .review-card .mt-2.small {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        overflow: hidden;
+        font-size: .9rem;
+        line-height: 1.4;
+        }
+        .review-card .fw-semibold {
+        white-space: normal;
+        }
+
     </style>
 </head>
 <body>
-<nav class="navbar navbar-expand-lg bg-white">
-    <div class="container">
-        <a class="navbar-brand fw-bold" th:href="@{/}">Culture Archive</a>
-        <div class="collapse navbar-collapse justify-content-end">
-            <ul class="navbar-nav">
-                <li class="nav-item"><a class="nav-link" th:href="@{/events/search}">전시/공연</a></li>
-                <li class="nav-item"><a class="nav-link" th:href="@{/reviews}">커뮤니티</a></li>
-
-                <!-- 비로그인 시 노출 -->
-                <li class="nav-item" sec:authorize="isAnonymous()">
-                    <a class="nav-link" th:href="@{/login}">로그인</a>
-                </li>
-                <li class="nav-item" sec:authorize="isAnonymous()">
-                    <a class="nav-link" th:href="@{/signup}">회원가입</a>
-                </li>
-
-                <!-- 로그인 시 노출: 로그아웃 폼(POST) -->
-                <li class="nav-item" sec:authorize="isAuthenticated()">
-                    <form th:action="@{/logout}" method="post">
-                        <button type="submit" class="btn btn-link nav-link">로그아웃</button>
-                    </form>
-                </li>
-            </ul>
-        </div>
-    </div>
-</nav>
+<div th:replace="~{fragments/header :: header}"></div>
 
 <div class="container">
-    <!-- 상단 히어로 -->
     <div class="hero-card">
-        <h1 class="fw-bold mb-3" style="color:var(--ca-ink)">나의 문화생활 아카이브</h1>
-        <p class="text-secondary mb-4">포스터·티켓으로 자동 기록하고, 후기를 공유하세요.</p>
-        <form class="input-group input-group-lg" th:action="@{/events/search}" method="get">
-            <input type="text" class="form-control" name="title" placeholder="전시·공연 검색 (제목, 장소 등)"/>
-            <button class="btn btn-ca" type="submit">검색</button>
-        </form>
+        <h1 class="hero-title mb-2">나의 문화생활 아카이브</h1>
+        <p class="hero-sub mb-4">검색하거나 사진으로 바로 기록을 시작하세요.</p>
+        <p th:if="${isPersonalized}" class="text-secondary">
+            <small>키워드: <span th:text="${recommendedKeywords}"></span></small>
+        </p>
+
+        <div class="hero-actions">
+            <form class="search-wrap mb-2" th:action="@{/events/search}" method="get">
+                <input type="text" class="form-control" name="title" placeholder="제목으로 검색"/>
+                <button class="btn btn-ca btn-search" type="submit">검색</button>
+            </form>
+
+            <div class="d-flex justify-content-center">
+                <!-- 로그인 사용자는 업로드로 이동 -->
+                <a class="btn btn-outline-secondary btn-icon"
+                   sec:authorize="isAuthenticated()" th:href="@{/ocr/upload}">
+                    <svg viewBox="0 0 24 24" fill="none">
+                        <path d="M4 8h3l2-3h6l2 3h3v12H4V8z" stroke="currentColor" stroke-width="1.6"
+                              stroke-linecap="round" stroke-linejoin="round"/>
+                        <circle cx="12" cy="14" r="4.25" stroke="currentColor" stroke-width="1.6"/>
+                    </svg>
+                    <span>사진으로 기록하기</span>
+                </a>
+                <!-- 비로그인은 로그인 후 업로드로 리다이렉트 -->
+                <a class="btn btn-outline-secondary btn-icon"
+                   sec:authorize="isAnonymous()"
+                   th:href="@{/member/login(redirect='/ocr/upload')}">
+                    <svg viewBox="0 0 24 24" fill="none">
+                        <path d="M4 8h3l2-3h6l2 3h3v12H4V8z" stroke="currentColor" stroke-width="1.6"
+                              stroke-linecap="round" stroke-linejoin="round"/>
+                        <circle cx="12" cy="14" r="4.25" stroke="currentColor" stroke-width="1.6"/>
+                    </svg>
+                    <span>사진으로 기록하기</span>
+                </a>
+            </div>
+        </div>
     </div>
 
-    <!-- 본문 -->
     <section class="py-5">
         <div class="row g-4">
-            <section class="py-5">
-                <div class="row g-4">
-                    <!-- 좌: 일정 -->
-                    <div class="col-lg-8">
-                        <div id="eventsBox" th:fragment="eventsBox">
-                            <div class="d-flex align-items-center justify-content-between mb-3">
-                                <h5 class="fw-semibold">
-                                    다가오는 일정
-                                    <span class="htmx-indicator spinner-border spinner-border-sm ms-2" role="status"></span>
-                                </h5>
-
-                                <!--  컨트롤 폼: /events/box 로 부분 렌더링, URL 안 바꿈 -->
-                                <form class="d-flex gap-2"
-                                      hx-get="@{/events/box}"
-                                      hx-target="#eventsBox"
-                                      hx-swap="outerHTML"
-                                      hx-select="#eventsBox"
-                                      hx-push-url="false">
-
-                                    <select class="form-select form-select-sm" name="sort" th:value="${sort}" hx-trigger="change">
-                                        <option value="date">날짜순</option>
-                                        <option value="views">조회수순</option>
-                                    </select>
-                                    <input type="hidden" name="dir"  th:value="${dir}"/>
-                                    <input type="hidden" name="size" th:value="${size}"/>
-                                    <input type="hidden" name="page" th:value="${page}"/>
-
-                                    <div class="btn-group btn-group-sm">
-                                        <!-- 이전 페이지 -->
-                                        <button type="button" class="btn btn-outline-secondary"
-                                                hx-get="@{/events/box(sort=${sort},dir=${dir},size=${size},page=${page-1})}"
-                                                hx-target="#eventsBox" hx-swap="outerHTML"
-                                                hx-select="#eventsBox" hx-push-url="false"
-                                                th:disabled="${isFirst}">▲</button>
-
-                                        <!-- 다음 페이지 -->
-                                        <button type="button" class="btn btn-outline-secondary"
-                                                hx-get="@{/events/box(sort=${sort},dir=${dir},size=${size},page=${page+1})}"
-                                                hx-target="#eventsBox" hx-swap="outerHTML"
-                                                hx-select="#eventsBox" hx-push-url="false"
-                                                th:disabled="${isLast}">▼</button>
-                                    </div>
-                                </form>
-                            </div>
-
-                            <!-- 카드 목록 -->
-                            <div class="row g-4">
-                                <div class="col-md-6" th:each="e : ${events}">
-                                    <div class="card event-card h-100 d-flex flex-row p-3">
-                                        <div class="poster-wrap">
-                                            <img class="poster-img" th:src="${e.imageObject}" th:alt="${e.title}">
-                                        </div>
-                                        <div class="d-flex flex-column justify-content-between flex-grow-1 ps-3">
-                                            <div>
-                                                <h6 class="fw-semibold" th:text="${e.title}">제목</h6>
-                                                <div class="text-secondary small" th:text="${e.eventSite}">장소</div>
-                                                <div class="text-secondary small"
-                                                     th:text="${e.period != null ? e.period : e.eventPeriod}">기간</div>
-                                            </div>
-                                            <a class="btn btn-sm btn-ca mt-2" th:href="${e.url}" target="_blank" rel="noopener">상세보기</a>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- 빈 목록 메시지 -->
-                                <div class="col-12" th:if="${events == null or #lists.isEmpty(events)}">
-                                    <div class="alert alert-light border">표시할 일정이 없습니다. 상단 검색에서 찾아보세요.</div>
-                                </div>
-                            </div>
+            <!-- 좌측: 이벤트 박스 -->
+            <div class="col-lg-8">
+                <div id="eventsBox" th:fragment="eventsBox">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h5 class="fw-semibold">다가오는 일정
+                            <span class="htmx-indicator spinner-border spinner-border-sm ms-2" role="status"></span>
+                        </h5>
+                        <div class="btn-group btn-group-sm">
+                            <!-- htmx 호출 URL은 Thymeleaf로 계산 => th:hx-get 사용 -->
+                            <button type="button" class="btn btn-outline-secondary"
+                                    th:hx-get="@{/events/box(size=${size},page=${page-1},mode=${isPersonalized} ? 'personal' : 'default')}"
+                                    hx-target="#eventsBox" hx-swap="outerHTML" hx-select="#eventsBox"
+                                    hx-push-url="false"
+                                    th:disabled="${isFirst}">▲
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary"
+                                    th:hx-get="@{/events/box(size=${size},page=${page+1},mode=${isPersonalized} ? 'personal' : 'default')}"
+                                    hx-target="#eventsBox" hx-swap="outerHTML" hx-select="#eventsBox"
+                                    hx-push-url="false"
+                                    th:disabled="${isLast}">▼
+                            </button>
                         </div>
                     </div>
 
-                    <!-- 우: 후기 (고정) -->
-                    <div class="col-lg-4">
-                        <div class="d-flex align-items-center justify-content-between mb-3">
-                            <h5 class="fw-semibold">커뮤니티 관람후기</h5>
-                            <a class="btn btn-sm btn-outline-secondary" th:href="@{/reviews}">더보기</a>
-                        </div>
-                        <div class="d-grid gap-2">
-                            <div class="chip" th:each="r : ${reviews}">
-                                <span class="avatar" th:text="${#strings.substring(r.authorName,0,1)}">U</span>
-                                <strong th:text="${r.title}">제목</strong>
-                                <span class="text-secondary">·</span>
-                                <span class="text-secondary"
-                                      th:text="${#temporals.format(r.createdAt,'yyyy.MM.dd')}">날짜</span>
+                    <div class="row g-4">
+                        <div class="col-md-6" th:each="e : ${events}">
+                            <div class="card event-card h-100 d-flex flex-row p-3">
+                                <div class="poster-wrap">
+                                    <img class="poster-img" th:src="${e.imageUrl}" th:alt="${e.title}"/>
+                                </div>
+                                <div class="d-flex flex-column justify-content-between flex-grow-1 ps-3">
+                                    <div>
+                                        <h6 class="fw-semibold" th:text="${e.title}"></h6>
+                                        <div class="text-secondary small"
+                                             th:text="${#strings.isEmpty(e.displayPeriod) ? '일정은 상세보기에서 확인하세요.' : e.displayPeriod}"></div>
+                                        <div class="text-secondary small" th:if="${!#strings.isEmpty(e.deadlineLabel)}"
+                                             th:text="${e.deadlineLabel}"></div>
+                                        <div class="text-secondary small" th:text="${e.site}"></div>
+                                    </div>
+                                    <a class="btn btn-sm btn-ca mt-2" th:href="${e.url}" target="_blank" rel="noopener">상세보기</a>
+                                </div>
                             </div>
-                            <div class="chip" th:if="${reviews == null or #lists.isEmpty(reviews)}">
-                                <span class="avatar">U</span>
-                                아직 후기가 없습니다. <a class="ms-1" th:href="@{/reviews/new}">첫 후기를 남겨보세요.</a>
+                        </div>
+
+                        <div class="col-12" th:if="${events == null or #lists.isEmpty(events)}">
+                            <div class="alert alert-light border">표시할 일정이 없습니다.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 우측: 커뮤니티 카드 영역 -->
+            <div class="col-lg-4">
+                <!-- fragment + id 쌍으로 만들면 htmx가 이 블록만 갈아끼움 -->
+                <div id="communityBox" th:fragment="communityBox" class="card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <h5 class="fw-semibold mb-0">커뮤니티 관람후기</h5>
+                            <div class="btn-group btn-group-sm">
+                                <!-- 이전 페이지: cPage==0이면 비활성 -->
+                                <button class="btn btn-outline-secondary"
+                                        th:hx-get="@{/community/box(page=${cPage-1},size=2)}"
+                                        hx-target="#communityBox" hx-swap="outerHTML" hx-select="#communityBox"
+                                        th:disabled="${cPage==0}">▲
+                                </button>
+                                <!-- 다음 페이지: 마지막 페이지면 비활성 -->
+                                <button class="btn btn-outline-secondary"
+                                        th:hx-get="@{/community/box(page=${cPage+1},size=2)}"
+                                        hx-target="#communityBox" hx-swap="outerHTML" hx-select="#communityBox"
+                                        th:disabled="${cPage>=cTotal-1}">▼
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 커뮤니티 카드 2개씩 -->
+                        <div class="vstack gap-3">
+                            <a th:each="r : ${reviews}" th:href="@{/reviews/{id}(id=${r.id})}"
+                               class="card review-card p-3 d-flex flex-row align-items-start text-decoration-none text-reset">
+                                <div class="review-thumb me-3">
+                                    <img th:src="${r.eventPosterUrl}"
+                                         onerror="this.onerror=null;this.src='https://via.placeholder.com/84x120?text=Poster'">
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between">
+                                        <div class="small text-secondary"
+                                             th:text="${#temporals.format(r.createdAt,'yyyy.MM.dd')}"></div>
+                                        <div class="rating-badge" th:if="${r.rating != null}">★ <span
+                                                th:text="${r.rating}"></span></div>
+                                    </div>
+                                    <div class="fw-semibold mt-1 text-truncate" th:text="${r.eventTitle}"></div>
+                                    <div class="text-secondary small text-truncate" th:text="${r.eventPlace}"></div>
+                                    <!-- 말줄임 2줄 -->
+                                    <div class="mt-2 small"
+                                         style="-webkit-line-clamp:2;display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden;"
+                                         th:text="${r.comment}"></div>
+                                    <div class="mt-2 d-flex align-items-center gap-2">
+                    <span class="avatar"
+                          style="width:24px;height:24px;border-radius:50%;background:var(--ca-blue-100);display:inline-flex;align-items:center;justify-content:center;"
+                          th:text="${#strings.substring(r.author.username,0,1)}"></span>
+                                        <span class="small" th:text="${r.author.username}"></span>
+                                    </div>
+                                </div>
+                            </a>
+
+                            <div class="alert alert-light border" th:if="${reviews == null or #lists.isEmpty(reviews)}">
+                                표시할 후기가 없습니다.
                             </div>
                         </div>
                     </div>
                 </div>
-            </section>
+            </div>
+            <!-- /우측 -->
         </div>
-        <script th:src="@{/js/bootstrap.bundle.min.js}"></script>
+    </section>
+</div>
+
+<script th:src="@{/js/bootstrap.bundle.min.js}"></script>
 </body>
 </html>

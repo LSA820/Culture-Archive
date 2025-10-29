@@ -1,4 +1,3 @@
-
 package com.example.culture_archive.config;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -13,19 +12,18 @@ import java.util.List;
 
 @Configuration
 @EnableCaching
-public class CacheConfig {
+public class CacheConfig { // KCISA 이벤트 목록 캐싱
 
     @Bean
     public CacheManager cacheManager() {
         CaffeineCacheManager mgr = new CaffeineCacheManager();
-        // 필요한 캐시 미리 생성 (둘 다 등록)
-        mgr.setCacheNames(List.of("kcisa", "homeUpcoming"));
-
+        // 사용 캐시 이름 일괄 지정
+        mgr.setCacheNames(List.of("kcisa", "homeUpcoming", "upcomingEvents", "eventsCache"));
         mgr.setCaffeine(
                 Caffeine.newBuilder()
                         .maximumSize(2000)
                         .expireAfterWrite(Duration.ofMinutes(30))
-                        .recordStats() // ← metrics 경고 제거
+                        .recordStats()
         );
         return mgr;
     }
